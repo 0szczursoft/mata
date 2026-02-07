@@ -1,4 +1,4 @@
-print("Test branch loaded. (Overlay Mode Added)")
+print("Test branch loaded. (Overlay Added)")
 
 local DATABASE = {}
 -- Demo
@@ -9,12 +9,15 @@ if next(DATABASE) == nil then
 end
 
 -- Config
-local toggleKey = 0xA1 -- Right Shift (Zmieniono z K)
+local toggleKey = 0xA1 -- Zmienione na Right Shift
 local keyName = "RShift"
-local overlayKey = 0x4B -- K (Nowy klawisz Overlay)
+local overlayKey = 0x4B -- Nowy klawisz: K (Overlay)
 local overlayKeyName = "K"
+local isOverlayMode = false -- Stan trybu Overlay
+local rebindTarget = nil -- Zmienna pomocnicza do bindowania
 
-local rebindingAction = nil -- Zmieniono z isRebinding (nil, "menu", "overlay")
+local isRebinding = false
+local rebinding = false -- Fix zmiennej uzywanej w petli
 local currentOpacity = 0.90
 local windowWidthTarget = 350
 local currentMode = "High"
@@ -52,7 +55,6 @@ if not Drawing then return print("Executor does not support Drawing API") end
 local ui = {}      -- Main UI
 local btns = {}    -- buttons
 local isVisible = true
-local isOverlayMode = false -- Nowy stan dla Overlay
 local activeMenu = nil 
 local curCat = nil
 local curData = nil
@@ -114,37 +116,6 @@ local PanelOutline = Drawing.new("Square"); PanelOutline.Thickness=1; PanelOutli
 
 local HiddenLabel = Drawing.new("Text"); HiddenLabel.Text="Menu hidden (Press "..keyName..")"; HiddenLabel.Size=16; HiddenLabel.Color=Color3.fromRGB(255,255,255); HiddenLabel.Transparency=0.5; HiddenLabel.Visible=false; HiddenLabel.Center=true
 
--- Menu Cleanup
-local function clearPanel()
-    for _, b in pairs(btns) do b.obj:Remove() end
-    btns = {}; PanelBg.Visible = false; PanelOutline.Visible = false
-end
-
--- Function to handle visibility state (Normal vs Overlay vs Hidden)
-local function updateVisibility()
-    if not isVisible then
-        -- Calosc ukryta
-        for _, v in pairs(ui) do v.Visible = false end
-        for i = 1, poolUsed do pool[i].obj.Visible = false end
-        clearPanel()
-        HiddenLabel.Visible = true
-        HiddenLabel.Text = "Hidden ("..keyName..")"
-    elseif isOverlayMode then
-        -- Tryb Overlay: Ukryj UI, pokaz piksele
-        for _, v in pairs(ui) do v.Visible = false end
-        clearPanel() -- Ukryj menu boczne
-        ResizeGrip.Visible = false
-        HiddenLabel.Visible = false
-        -- Piksele widoczne
-        for i = 1, poolUsed do pool[i].obj.Visible = true end
-    else
-        -- Tryb Normalny
-        for _, v in pairs(ui) do v.Visible = true end
-        for i = 1, poolUsed do pool[i].obj.Visible = true end
-        HiddenLabel.Visible = false
-    end
-end
-
 -- Rendering
 local function renderPixels()
     local pxData = getPixels()
@@ -179,7 +150,9 @@ local function renderPixels()
                     table.insert(pool, p)
                 end
                 
-                -- Piksele zawsze widoczne jesli isVisible=true (obslugiwane przez updateVisibility)
+                -- LOGIKA WIDOCZNOSCI DLA PIKSELI
+                p.obj.Visible = isVisible -- Piksele sa widoczne w trybie Overlay i Normalnym
+                
                 p.obj.Color = Color3.fromRGB(col[1], col[2], col[3])
                 p.obj.Size = Vector2.new(pSize, pSize)
                 p.obj.Transparency = currentOpacity
@@ -197,9 +170,7 @@ local function renderPixels()
     
     -- Update transparency
     Window.Transparency = currentOpacity
-    Header.Transparency = currentOpacity * 0.75 -- Fix: troche bardziej przezroczysty header
-
-    updateVisibility() -- Zastosuj stan widocznosci po renderze
+    Header.Transparency = currentOpacity
 end
 
 -- Positioning
@@ -232,6 +203,11 @@ local function updatePositions(x, y)
 end
 
 -- Menu Build
+local function clearPanel()
+    for _, b in pairs(btns) do b.obj:Remove() end
+    btns = {}; PanelBg.Visible = false; PanelOutline.Visible = false
+end
+
 local function createMenuBtn(text, color, y, type, val, w)
     w = w or 130
     local btnText = Drawing.new("Text")
@@ -275,15 +251,15 @@ local function buildSettings()
     table.insert(btns, {obj=head, type="deco", relX=10, relY=yOff}); yOff=yOff+30
 
     local kLbl = Drawing.new("Text"); kLbl.Text="Toggle Key:"; kLbl.Size=13; kLbl.Color=theme.text; kLbl.Visible=isVisible; kLbl.ZIndex=22
-    table.insert(btns, {obj=kLbl, type="deco", relX=10, relY=yOff}); yOff=yOff+18
+    table.insert(btns, {obj=kLbl, type="deco", relX=10, relY=yOff}); yOff=yOff+20
     local kVal = Drawing.new("Text"); kVal.Text="[ " .. keyName .. " ]"; kVal.Size=13; kVal.Color=Color3.fromRGB(100,255,100); kVal.Visible=isVisible; kVal.ZIndex=22
-    table.insert(btns, {obj=kVal, type="bind_menu", relX=10, relY=yOff}); yOff=yOff+25
+    table.insert(btns, {obj=kVal, type="rebind", relX=10, relY=yOff}); yOff=yOff+30
 
-    -- Overlay Key Setting
+    -- [DODANE] Overlay Key Setting
     local oLbl = Drawing.new("Text"); oLbl.Text="Overlay Key:"; oLbl.Size=13; oLbl.Color=theme.text; oLbl.Visible=isVisible; oLbl.ZIndex=22
-    table.insert(btns, {obj=oLbl, type="deco", relX=10, relY=yOff}); yOff=yOff+18
+    table.insert(btns, {obj=oLbl, type="deco", relX=10, relY=yOff}); yOff=yOff+20
     local oVal = Drawing.new("Text"); oVal.Text="[ " .. overlayKeyName .. " ]"; oVal.Size=13; oVal.Color=Color3.fromRGB(100,200,255); oVal.Visible=isVisible; oVal.ZIndex=22
-    table.insert(btns, {obj=oVal, type="bind_overlay", relX=10, relY=yOff}); yOff=yOff+30
+    table.insert(btns, {obj=oVal, type="rebind_overlay", relX=10, relY=yOff}); yOff=yOff+30
 
     local qLbl = Drawing.new("Text"); qLbl.Text="Quality:"; qLbl.Size=13; qLbl.Color=theme.text; qLbl.Visible=isVisible; qLbl.ZIndex=22
     table.insert(btns, {obj=qLbl, type="deco", relX=10, relY=yOff}); yOff=yOff+20
@@ -321,43 +297,60 @@ local function pointInRect(px, py, rx, ry, rw, rh) return px >= rx and px <= rx 
 -- Input
 local dragging, resizing = false, false
 local dragOffsetX, dragOffsetY, resizeStartX, initialWinW = 0, 0, 0, 0
-local mouse1Down, f3Down, overlayDown = false, false, false
+local mouse1Down, f3Down, ovDown = false, false, false
 local keyMap = { [0x4B]="K", [0x4C]="L", [0x50]="P", [0x58]="X", [0x4D]="M", [0xA1]="RShift" }
 
 spawn(function()
     while true do
         local mx, my = Mouse.X, Mouse.Y
         
+        -- Hidden Indicator
+        if not isVisible then
+            HiddenLabel.Visible = true; HiddenLabel.Position = Vector2.new(Camera.ViewportSize.X-250, Camera.ViewportSize.Y-50)
+            HiddenLabel.Text = "Menu hidden ("..keyName..")"
+        else HiddenLabel.Visible = false end
+
         -- Toggle Key
-        if not rebindingAction then
-            -- Main Menu Toggle
+        if not rebinding then
             local k = iskeypressed(toggleKey)
             if k and not f3Down then
                 isVisible = not isVisible
-                updateVisibility()
+                
+                -- LOGIKA WIDOCZNOSCI
+                local uiState = isVisible and not isOverlayMode
+                for _, v in pairs(ui) do v.Visible = uiState end
+                for i = 1, poolUsed do pool[i].obj.Visible = isVisible end -- Piksele widoczne zawsze gdy isVisible true
+                
+                if not isVisible then activeMenu = nil; clearPanel() end
             end
             f3Down = k
 
-            -- Overlay Toggle
+            -- [DODANE] Overlay Key Logic
             local o = iskeypressed(overlayKey)
-            if o and not overlayDown then
-                if isVisible then -- Overlay dziala tylko gdy okno jest wlaczone
+            if o and not ovDown then
+                if isVisible then
                     isOverlayMode = not isOverlayMode
-                    updateVisibility()
+                    -- Odswiez widocznosc UI
+                    local uiState = isVisible and not isOverlayMode
+                    for _, v in pairs(ui) do v.Visible = uiState end
+                    if isOverlayMode then clearPanel(); activeMenu = nil end
                 end
             end
-            overlayDown = o
+            ovDown = o
 
         else
             for k = 8, 255 do
                 if iskeypressed(k) and k ~= 0 then
                     local nm = keyMap[k] or string.char(k)
-                    if rebindingAction == "menu" then
+                    
+                    if rebindTarget == "menu" then
                         toggleKey = k; keyName = nm
-                    elseif rebindingAction == "overlay" then
+                    elseif rebindTarget == "overlay" then
                         overlayKey = k; overlayKeyName = nm
                     end
-                    rebindingAction = nil
+
+                    rebinding = false
+                    rebindTarget = nil
                     buildSettings(); updatePositions(windowPosX, windowPosY); wait(0.2); break
                 end
             end
@@ -373,30 +366,29 @@ spawn(function()
                 -- Check Menu
                 if activeMenu then
                     for _, b in ipairs(btns) do
-                        -- FIX: Ignoruj dekoracje
-                        if b.type ~= "deco" then
-                            local w, h = 100, 15
-                            if b.type:sub(1,2) == "q_" then w = 40; h = 20 end
-                            if b.type == "op_bar" or b.type == "op_fill" then w = 130 end
-    
-                            if pointInRect(mx, my, b.obj.Position.X, b.obj.Position.Y, w, h) then
-                                clickedUI = true
-                                if b.type == "cat" then curCat=b.val; buildGallery(); updatePositions(windowPosX, windowPosY)
-                                elseif b.type == "back" then curCat=nil; buildGallery(); updatePositions(windowPosX, windowPosY)
-                                elseif b.type == "img" then 
-                                    curData=DATABASE[curCat][b.val]; renderPixels(); updatePositions(windowPosX, windowPosY)
-                                elseif b.type == "bind_menu" then rebindingAction="menu"; b.obj.Text="[...]"; b.obj.Color=Color3.new(1,1,0)
-                                elseif b.type == "bind_overlay" then rebindingAction="overlay"; b.obj.Text="[...]"; b.obj.Color=Color3.new(1,1,0)
-                                elseif b.type == "q_low" then if currentMode~="Low" then currentMode="Low"; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY) end
-                                elseif b.type == "q_mid" then if currentMode~="Mid" then currentMode="Mid"; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY) end
-                                elseif b.type == "q_high" then if currentMode~="High" then currentMode="High"; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY) end
-                                elseif b.type == "op_bar" or b.type == "op_fill" then
-                                    local pct = (mx - b.obj.Position.X) / 130; if pct<0.1 then pct=0.1 end; if pct>1 then pct=1 end
-                                    currentOpacity = pct; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY)
-                                end
-                                repeat task.wait() until not ismouse1pressed()
-                                break
+                        local w, h = 100, 15
+                        if b.type:sub(1,2) == "q_" then w = 40; h = 20 end
+                        if b.type == "op_bar" or b.type == "op_fill" then w = 130 end
+
+                        if pointInRect(mx, my, b.obj.Position.X, b.obj.Position.Y, w, h) then
+                            clickedUI = true
+                            if b.type == "cat" then curCat=b.val; buildGallery(); updatePositions(windowPosX, windowPosY)
+                            elseif b.type == "back" then curCat=nil; buildGallery(); updatePositions(windowPosX, windowPosY)
+                            elseif b.type == "img" then 
+                                curData=DATABASE[curCat][b.val]; renderPixels(); updatePositions(windowPosX, windowPosY)
+                            elseif b.type == "rebind" then 
+                                rebinding=true; rebindTarget="menu"; b.obj.Text="[...]"; b.obj.Color=Color3.new(1,1,0)
+                            elseif b.type == "rebind_overlay" then 
+                                rebinding=true; rebindTarget="overlay"; b.obj.Text="[...]"; b.obj.Color=Color3.new(1,1,0)
+                            elseif b.type == "q_low" then if currentMode~="Low" then currentMode="Low"; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY) end
+                            elseif b.type == "q_mid" then if currentMode~="Mid" then currentMode="Mid"; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY) end
+                            elseif b.type == "q_high" then if currentMode~="High" then currentMode="High"; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY) end
+                            elseif b.type == "op_bar" or b.type == "op_fill" then
+                                local pct = (mx - b.obj.Position.X) / 130; if pct<0.1 then pct=0.1 end; if pct>1 then pct=1 end
+                                currentOpacity = pct; renderPixels(); buildSettings(); updatePositions(windowPosX, windowPosY)
                             end
+                            repeat task.wait() until not ismouse1pressed()
+                            break
                         end
                     end
                 end
