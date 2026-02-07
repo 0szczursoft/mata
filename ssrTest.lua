@@ -15,7 +15,7 @@ local overlayKey = 0x4B -- K
 local overlayKeyName = "K"
 
 local rebindingAction = nil 
-local currentOpacity = 0.90
+local currentOpacity = 1.00
 local windowWidthTarget = 350
 local currentMode = "High"
 local menuWidth = 170 
@@ -514,3 +514,4 @@ spawn(function()
         wait(0.01)
     end
 end)
+
