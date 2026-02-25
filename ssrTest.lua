@@ -1,6 +1,6 @@
 print("Test branch loaded.)")
 
-local DATABASE_URL = "https://github.com/0szczursoft/mata/edit/main/images.lua"
+local DATABASE_URL = "https://raw.githubusercontent.com/0szczursoft/mata/refs/heads/main/images.lua"
 local DATABASE = loadstring(game:HttpGet(DATABASE_URL))() or {}
 
 -- Demo
@@ -21,7 +21,7 @@ local currentOpacity = 0.90
 local windowWidthTarget = 350
 local currentMode = "Mid"
 local menuWidth = 160
-local version = "1.3 (Smooth)"
+local version = "1.2"
 
 -- Theme
 local theme = {
@@ -468,3 +468,4 @@ task.spawn(function()
         task.wait(0.01)
     end
 end)
+
