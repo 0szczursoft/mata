@@ -155,8 +155,8 @@ local siriusValues = {
 		},
 	},
 	trustedScripts = {
-		[155615604] = {title = "Prison Life (Sirius Trusted)", script = [[loadstring(game:HttpGet("https://pastebin.com/raw/TPKUkjSH"))()]]},
-		[606849621] = {title = "Jailbreak (Sirius Trusted)", script = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/Breadido/Codecoat/refs/heads/main/looder.luau"))()]]},
+		[155615604] = {title = "Prison Life Pirno.cxx (Sirius Trusted)", script = [[loadstring(game:HttpGet("https://pastebin.com/raw/TPKUkjSH"))()]]},
+		[606849621] = {title = "Jailbreak Allium (Sirius Trusted)", script = [[loadstring(game:HttpGet("https://lucii.space/AlliumLoader.lua"))()]]},
 		[13772394625] = {title = "Blade Ball (Sirius Trusted)", script = [[getgenv().SCRIPT_KEY='KEYLESS' loadstring(game:HttpGet("https://api.jnkie.com/api/v1/luascripts/public/245a7b9319ee4b2c3ae55789847e7df70b6be54b4ebcd6b95a905b69cffbd6e2/download"))()]]},
 	},
 	rawTree = "https://raw.githubusercontent.com/SiriusSoftwareLtd/Sirius/Sirius/games/",
